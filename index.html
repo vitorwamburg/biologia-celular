@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interativo Moderno - Membrana Plasmática</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ========================
+           🎨 DESIGN & TIPOGRAFIA
+           ======================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #0B0B0B;
+            color: #F5F5F5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #161616;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease;
+        }
+
+        h1, h2 {
+            margin-bottom: 24px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .question-counter {
+            font-size: 0.9rem;
+            color: #888;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: #222;
+            color: #F5F5F5;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #2A2A2A;
+            border-color: #555;
+            transform: translateY(-2px);
+        }
+
+        .option-btn.correct {
+            background-color: #1b5e20 !important;
+            border-color: #4caf50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            color: #fff;
+        }
+
+        .option-btn.wrong {
+            background-color: #b71c1c !important;
+            border-color: #f44336 !important;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
+            color: #fff;
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* ========================
+           🧩 MODAL / POPUP
+           ======================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: #161616;
+            padding: 32px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+
+        .text-success { color: #4caf50; }
+        .text-danger { color: #f44336; }
+
+        .modal-feedback {
+            margin-bottom: 24px;
+            line-height: 1.5;
+            color: #CCC;
+        }
+
+        .modal-explanation {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+            font-size: 0.9rem;
+            color: #AAA;
+            text-align: left;
+        }
+
+        .btn-primary {
+            background-color: #F5F5F5;
+            color: #0B0B0B;
+            border: none;
+            padding: 14px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            background-color: #DDD;
+            transform: translateY(-2px);
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <div id="quiz-screen" class="card screen active">
+            <div class="question-counter" id="question-counter">Questão 1</div>
+            <h2 id="question-text">Carregando pergunta...</h2>
+            <div class="options-grid" id="options-container"></div>
+        </div>
+
+        <div id="result-screen" class="card screen">
+            <h2>🎉 Quiz Finalizado!</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 10px;">Sua pontuação:</p>
+            <h1 id="score-text" style="font-size: 3rem; color: #4caf50;">0/0</h1>
+            <p id="score-feedback" style="text-align: center; color: #888; margin-bottom: 32px;">Excelente trabalho!</p>
+            <button class="btn-primary" onclick="restartQuiz()">Jogar Novamente</button>
+        </div>
+    </div>
+
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Resultado</h3>
+            <p id="modal-feedback" class="modal-feedback">A resposta correta era...</p>
+            <div id="modal-explanation" class="modal-explanation">Explicação aqui...</div>
+            <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Próxima Questão</button>
+        </div>
+    </div>
+
+    <script>
+        /* ========================
+           🧠 BANCO DE QUESTÕES
+           ======================== */
+        const perguntas = [
+            // QUESTÕES DE 1 A 15
+            {
+                pergunta: "A importância das membranas biológicas para o surgimento da vida está diretamente relacionada à sua capacidade de:",
+                opcoes: [
+                    "Sintetizar proteínas estruturais",
+                    "Separar e organizar o conteúdo celular",
+                    "Produzir energia metabólica",
+                    "Controlar apenas a entrada de água",
+                    "Isolar completamente o meio interno"
+                ],
+                correta: 1,
+                explicacao: "O surgimento da membrana foi o passo crítico para a vida porque permitiu a compartimentalização química, separando reações internas do ambiente externo.<br><br>Sem isso, moléculas essenciais seriam diluídas e reações metabólicas não ocorreriam de forma coordenada. Além disso, a membrana permite gradientes químicos e elétricos, base para produção de energia (ex: cadeia respiratória). Ou seja, não é só 'separar', é criar um sistema funcional controlado."
+            },
+            {
+                pergunta: "A permeabilidade seletiva da membrana plasmática significa que ela:",
+                opcoes: [
+                    "Seleciona quais substâncias entram e saem",
+                    "Permite apenas a entrada de água",
+                    "Atua apenas em transporte ativo",
+                    "Impede completamente a entrada de solutos",
+                    "Permite a passagem livre de qualquer substância"
+                ],
+                correta: 0,
+                explicacao: "A permeabilidade seletiva é o que garante homeostase celular.<br><br>A célula precisa manter concentrações internas muito diferentes do meio externo (ex: Na⁺ baixo dentro e K⁺ alto). Se tudo passasse livremente, esses gradientes desapareceriam, comprometendo funções como condução nervosa, contração muscular e equilíbrio osmótico. Logo, seletividade não é detalhe — é condição de sobrevivência."
+            },
+            {
+                pergunta: "A fluidez da membrana plasmática está relacionada principalmente:",
+                opcoes: [
+                    "À fixação do citoesqueleto",
+                    "À mobilidade dos fosfolipídios na bicamada",
+                    "À presença de proteínas periféricas",
+                    "À ausência de colesterol",
+                    "À disposição rígida dos lipídios"
+                ],
+                correta: 1,
+                explicacao: "A fluidez da membrana permite que seus componentes se movam lateralmente, o que é essencial para: redistribuição de proteínas, formação de vesículas, adaptação mecânica.<br><br>Sem essa fluidez, processos como endocitose, divisão celular e até sinalização seriam inviáveis. Além disso, a fluidez é regulada (ex: colesterol), o que mostra que a célula controla ativamente sua própria 'consistência' estrutural."
+            },
+            {
+                pergunta: "A capacity autosselante da membrana é essencial porque permite:",
+                opcoes: [
+                    "Impedir transporte ativo",
+                    "Reduzir comunicação celular",
+                    "Evitar perda de material celular após rupturas",
+                    "Entrada livre de substâncias",
+                    "Aumentar rigidez estrutural"
+                ],
+                correta: 2,
+                explicacao: "A propriedade autosselante decorre da natureza hidrofóbica dos lipídios: quando há ruptura, as moléculas se reorganizam espontaneamente para evitar contato com água.<br><br>Isso é crucial porque evita perda de conteúdo celular, que poderia ser letal. Além disso, permite eventos complexos como fusão de vesículas (exocitose) e formação de novas membranas — ou seja, é essencial para dinâmica celular."
+            },
+            {
+                pergunta: "O glicocálix tem papel importante porque:",
+                opcoes: [
+                    "Produz ATP",
+                    "Atua apenas como reserva energética",
+                    "Controla transporte ativo",
+                    "Participa do reconhecimento celular",
+                    "Está presente apenas em células vegetais"
+                ],
+                correta: 3,
+                explicacao: "O glicocálix funciona como uma 'identidade molecular' da célula.<br><br>Ele permite reconhecimento entre células, importante em processos como resposta imune (identificar 'próprio' vs 'estranho'). Nos grupos sanguíneos ABO, pequenas diferenças nas glicoproteínas já são suficientes para desencadear reações imunológicas graves — mostrando o nível de especificidade envolvido."
+            },
+            {
+                pergunta: "A bicamada lipídica se forma espontaneamente porque os fosfolipídios são:",
+                opcoes: [
+                    "Insolúveis em água",
+                    "Proteicos",
+                    "Totalmente hidrofílicos",
+                    "Anfipáticos",
+                    "Apolares"
+                ],
+                correta: 3,
+                explicacao: "A anfipaticidade dos fosfolipídios (parte hidrofílica + hidrofóbica) faz com que eles se organizem espontaneamente em bicamada em meio aquoso.<br><br>Esse arranjo cria uma barreira natural contra substâncias polares, explicando a seletividade da membrana. Ou seja, a estrutura química dos lipídios define diretamente a função da membrana."
+            },
+            {
+                pergunta: "Proteínas integrais diferem das periféricas porque:",
+                opcoes: [
+                    "Não possuem função",
+                    "São removidas facilmente com água",
+                    "Estão fracamente ligadas à membrana",
+                    "Não participam de transporte",
+                    "Estão inseridas na bicamada lipídica"
+                ],
+                correta: 4,
+                explicacao: "Proteínas integrais estão embutidas na bicamada e frequentemente atravessam toda a membrana, atuando como canais, bombas ou receptores.<br><br>Já as periféricas têm papel mais associado à sinalização e suporte estrutural. Essa diferença estrutural determina suas funções — especialmente no transporte de substâncias."
+            },
+            {
+                pergunta: "A difusão simples ocorre quando:",
+                opcoes: [
+                    "A substância atravessa a bicamada lipídica",
+                    "Ocorre contra o gradiente",
+                    "Envolve vesículas",
+                    "Há gasto de ATP",
+                    "A substância passa por proteínas"
+                ],
+                correta: 0,
+                explicacao: "Na difusão simples, moléculas atravessam diretamente a bicamada lipídica seguindo o gradiente de concentração.<br><br>Isso só é possível para moléculas pequenas e apolares. Esse tipo de transporte é limitado justamente pela natureza hidrofóbica da membrana, o que reforça a necessidade de outros mecanismos para moléculas polares."
+            },
+            {
+                pergunta: "A difusão facilitada diferencia-se da simples porque:",
+                opcoes: [
+                    "Não depende de concentração",
+                    "É exclusiva para gases",
+                    "Ocorre contra gradiente",
+                    "Utiliza proteínas transportadoras",
+                    "Usa ATP"
+                ],
+                correta: 3,
+                explicacao: "A difusão facilitada resolve uma limitação da difusão simples: a passagem de moléculas polares.<br><br>As proteínas transportadoras criam um 'caminho' específico, aumentando eficiência e seletividade. Mesmo sendo passivo, esse processo pode saturar — característica importante em provas."
+            },
+            {
+                pergunta: "O transporte ativo é caracterizado por:",
+                opcoes: [
+                    "Ocorre contra o gradiente com gasto de ATP",
+                    "Não gastar energia",
+                    "Não utilizar proteínas",
+                    "Ocorre a favor do gradiente",
+                    "Ser exclusivo para água"
+                ],
+                correta: 0,
+                explicacao: "O transporte ativo permite que a célula mantenha gradientes contra a tendência natural (difusão).<br><br>Isso exige ATP porque é energeticamente desfavorável. Sem esse mecanismo, a célula rapidamente perderia controle sobre seu ambiente interno."
+            },
+            {
+                pergunta: "A bomba de sódio e potássio é importante porque:",
+                opcoes: [
+                    "Atua apenas na osmose",
+                    "Mantém gradientes iônicos",
+                    "Iguala concentrações",
+                    "Transporta água",
+                    "Remove proteínas"
+                ],
+                correta: 1,
+                explicacao: "A bomba Na⁺/K⁺ é um exemplo clássico de transporte ativo primário e é fundamental para: potencial de membrana, volume celular, excitabilidade celular.<br><br>Ela não apenas transporta íons, mas cria condições para vários outros processos fisiológicos."
+            },
+            {
+                pergunta: "Na osmose, ocorre:",
+                opcoes: [
+                    "Movimento de água do meio hipertônico para hipotônico",
+                    "Difusão de proteínas",
+                    "Movimento de soluto",
+                    "Transporte ativo",
+                    "Movimento de água do meio hipotônico para hipertônico"
+                ],
+                correta: 4,
+                explicacao: "Na osmose, a água se move para equilibrar concentrações de soluto.<br><br>Isso pode gerar efeitos importantes: célula incha (meio hipotônico) ou célula murcha (meio hipertônico). Esse mecanismo está diretamente ligado ao controle do volume celular e equilíbrio hídrico."
+            },
+            {
+                pergunta: "A endocitose é caracterizada por:",
+                opcoes: [
+                    "Saída de água",
+                    "Entrada de material por vesículas",
+                    "Transporte passivo",
+                    "Difusão simples",
+                    "Liberação de substâncias"
+                ],
+                correta: 1,
+                explicacao: "A endocitose permite entrada de materiais grandes que não poderiam atravessar a membrana por difusão.<br><br>É um processo ativo que envolve reorganização da membrana e formação de vesículas — mostrando que a membrana é altamente dinâmica."
+            },
+            {
+                pergunta: "A fagocitose difere da pinocitose porque:",
+                opcoes: [
+                    "Não utiliza energia",
+                    "Engloba partículas sólidas",
+                    "Ocorre por difusão",
+                    "Não forma vesículas",
+                    "É exclusiva de plantas"
+                ],
+                correta: 1,
+                explicacao: "A diferença central está no tipo de material:<br>fagocitose → partículas grandes (ex: bactérias)<br>pinocitose → líquidos e solutos<br><br>A fagocitose tem papel importante na defesa imunológica, enquanto a pinocitose está mais relacionada à absorção celular."
+            },
+            {
+                pergunta: "A perda da permeabilidade seletiva da membrana pode causar:",
+                opcoes: [
+                    "Produção excessiva de ATP",
+                    "Rigidez da célula",
+                    "Entrada e saída descontrolada de substâncias",
+                    "Aumento da divisão celular",
+                    "Aumento da síntese proteica"
+                ],
+                correta: 2,
+                explicacao: "A perda da permeabilidade seletiva leva ao colapso da homeostase celular.<br><br>Íons podem entrar ou sair de forma descontrolada, afetando processos vitais. No caso da hipercalemia, por exemplo, alterações no K⁺ impactam diretamente o potencial elétrico das células, podendo causar arritmias e falhas neuromusculares."
+            },
+            // QUESTÕES DE 16 A 30
+            {
+                pergunta: "A presença de colesterol na membrana plasmática exerce um papel mais preciso ao:",
+                opcoes: [
+                    "Tornar a membrana completamente rígida em baixas temperaturas",
+                    "Aumentar uniformemente a fluidez em qualquer temperatura",
+                    "Impedir a movimentação lateral de proteínas integrais",
+                    "Reduzir variações extremas de fluidez conforme a temperatura",
+                    "Aumentar diretamente o transporte ativo de íons"
+                ],
+                correta: 3,
+                explicacao: "O colesterol atua como um regulador dinâmico da fluidez da membrana, funcionando como um 'amortecedor térmico'.<br><br>Em temperaturas elevadas, ele restringe o movimento excessivo dos fosfolipídios, evitando que a membrana fique fluida demais. Em temperaturas baixas, impede o empacotamento rígido dos lipídios, mantendo a membrana funcional.<br>👉 Consequência: garante estabilidade funcional das proteínas de membrana e preserva a permeabilidade seletiva."
+            },
+            {
+                pergunta: "A concentração de solutos não permeáveis aumenta no meio extracelular, o efeito osmótico predominante será:",
+                opcoes: [
+                    "Difusão de solutos para o meio intracelular",
+                    "Saída de água até equilíbrio dinâmico de potencial osmótico",
+                    "Entrada de água até equalização absoluta de solutos",
+                    "Aumento da permeabilidade da membrana",
+                    "Transporte ativo compensatório imediato"
+                ],
+                correta: 1,
+                explicacao: "O aumento de solutos não permeáveis no meio extracelular eleva a osmolaridade externa, tornando o meio hipertônico.<br><br>Isso reduz o potencial hídrico fora da célula, levando à saída de água por osmose.<br>👉 Importante: a água se move até atingir equilíbrio de potencial osmótico, não necessariamente igualdade de concentrações."
+            },
+            {
+                pergunta: "A alta especificidade das proteínas transportadoras decorre principalmente de:",
+                opcoes: [
+                    "Pressão osmótica local",
+                    "Gradientes de concentração mantidos pela célula",
+                    "Configuração tridimensional do sítio de ligação",
+                    "Presença de ATP no meio intracelular",
+                    "Interações inespecíficas com solutos polares"
+                ],
+                correta: 2,
+                explicacao: "A especificidade das proteínas transportadoras é determinada por seu sítio de ligação tridimensional, que reconhece o soluto por complementaridade estrutural e química (carga, polaridade, tamanho).<br><br>👉 Isso é análogo à interação enzima-substrato. Pequenas mutações estruturais podem abolir completamente o transporte."
+            },
+            {
+                pergunta: "O fenômeno de saturação observado na difusão facilitada indica que:",
+                opcoes: [
+                    "O gradiente de concentração deixa de existir",
+                    "Existe um número limitado de proteínas disponíveis para transporte",
+                    "O transporte torna-se ativo em altas concentrações",
+                    "A difusão simples passa a predominar",
+                    "A membrana perde sua permeabilidade seletiva"
+                ],
+                correta: 1,
+                explicacao: "Na difusão facilitada, o transporte depende de proteínas específicas. Como essas proteínas existem em número limitado, o sistema apresenta cinética de saturação (Vmax).<br><br>👉 Quando todos os transportadores estão ocupados, aumentar a concentração do soluto não aumenta mais a taxa de transporte."
+            },
+            {
+                pergunta: "A distinção fundamental entre transporte ativo primário e secundário está no fato de que:",
+                opcoes: [
+                    "O primário utiliza ATP diretamente, enquanto o secundário depende de gradientes pré-estabelecidos",
+                    "Apenas o primário ocorre contra gradiente",
+                    "O secundário não envolve proteínas de membrana",
+                    "O primário não altera gradientes iônicos",
+                    "O secundário ocorre apenas em células especializadas"
+                ],
+                correta: 0,
+                explicacao: "A diferença central está na origem da energia utilizada:<br>Transporte ativo primário → usa ATP diretamente<br>Transporte ativo secundário → utiliza energia armazenada em gradientes iônicos (geralmente Na⁺), previamente gerados por transporte primário.<br><br>👉 Exemplo: absorção de glicose no intestino via cotransporte com sódio."
+            },
+            {
+                pergunta: "A exocitose pode ser considerada um processo ativo porque:",
+                opcoes: [
+                    "Ocorre sempre contra gradiente de concentração",
+                    "Não envolve vesículas intracelulares",
+                    "Depende de reorganização de membrana e consumo energético",
+                    "É independente de proteínas",
+                    "Ocorre apenas em células secretoras"
+                ],
+                correta: 2,
+                explicacao: "A exocitose envolve uma sequência energeticamente custosa: transporte de vesículas pelo citoesqueleto, reconhecimento e ancoragem na membrana, e fusão de membranas (processo altamente regulado).<br><br>👉 Isso exige ATP e proteínas específicas (ex: SNAREs)."
+            },
+            {
+                pergunta: "A presença de aquaporinas altera principalmente:",
+                opcoes: [
+                    "A direção do fluxo de água",
+                    "A concentração de solutos",
+                    "A necessidade de ATP na osmose",
+                    "O equilíbrio osmótico final",
+                    "A velocidade do fluxo de água através da membrana"
+                ],
+                correta: 4,
+                explicacao: "Aquaporinas são canais altamente seletivos que aumentam drasticamente a permeabilidade à água, acelerando o fluxo osmótico.<br><br>👉 Elas não alteram a direção do fluxo nem o equilíbrio osmótico final, apenas aumentam a velocidade de ajuste osmótico."
+            },
+            {
+                pergunta: "A contribuição da bomba Na⁺/K⁺ para o potencial de membrana ocorre porque:",
+                opcoes: [
+                    "Neutraliza completamente as cargas",
+                    "Permite entrada livre de sódio",
+                    "Atua apenas na osmose",
+                    "Gera desequilíbrio eletroquímico ao transportar íons de forma assimétrica",
+                    "Transporta quantidades iguais de íons"
+                ],
+                correta: 3,
+                explicacao: "A bomba Na⁺/K⁺ é eletrogênica, pois transporta íons de forma assimétrica: 3 Na⁺ para fora e 2 K⁺ para dentro.<br><br>👉 Isso gera um gradiente eletroquímico, contribuindo para o potencial de membrana negativo, essencial para a condução nervosa e contração muscular."
+            },
+            {
+                pergunta: "A endocitose mediada por receptor apresenta maior eficiência porque:",
+                opcoes: [
+                    "Não depende de energia",
+                    "Permite internalização inespecífica de substâncias",
+                    "Ocorre independentemente de ligantes",
+                    "Não envolve membrana plasmática",
+                    "Concentra moléculas específicas mesmo em baixa disponibilidade extracelular"
+                ],
+                correta: 4,
+                explicacao: "Na endocitose mediada por receptor, a célula utiliza proteínas específicas para capturar moléculas mesmo em baixas concentrações extracelulares.<br><br>👉 Os receptores concentram ligantes em regiões específicas da membrana. Aplicação: captação de LDL (colesterol)."
+            },
+            {
+                pergunta: "A fluidez da membrana plasmática é resultado da interação entre:",
+                opcoes: [
+                    "Apenas proteínas integrais",
+                    "Temperatura e composição lipídica da membrana",
+                    "ATP e transporte ativo",
+                    "Gradientes osmóticos",
+                    "Apenas temperatura ambiente"
+                ],
+                correta: 1,
+                explicacao: "A fluidez da membrana é resultado da interação entre a temperatura, o grau de saturação dos lipídios e a presença de colesterol.<br><br>👉 Lipídios insaturados aumentam a fluidez, enquanto o colesterol a estabiliza. Isso permite que a célula ajuste sua membrana para manter funcionalidade ideal."
+            },
+            {
+                pergunta: "O transporte ativo secundário pode ocorrer contra o gradiente de uma substância porque:",
+                opcoes: [
+                    "Utiliza ATP diretamente",
+                    "Independe de proteínas",
+                    "Ocorre apenas em meio isotônico",
+                    "Aproveita energia armazenada em gradientes iônicos",
+                    "Depende da difusão simples"
+                ],
+                correta: 3,
+                explicacao: "O transporte ativo secundário utiliza energia potencial armazenada em gradientes iônicos (principalmente Na⁺).<br><br>👉 Esse gradiente funciona como uma 'bateria biológica'. Exemplo: cotransporte Na⁺/glicose, onde a entrada de Na⁺ favorece a entrada de glicose contra seu gradiente."
+            },
+            {
+                pergunta: "Proteínas receptoras de membrana são essenciais porque:",
+                opcoes: [
+                    "Produzem energia celular",
+                    "Permitem transdução de sinais extracelulares em respostas intracelulares",
+                    "Formam a bicamada lipídica",
+                    "Controlam osmose",
+                    "Transportam íons diretamente"
+                ],
+                correta: 1,
+                explicacao: "Receptores de membrana convertem sinais externos em respostas internas — processo chamado transdução de sinal.<br><br>👉 Envolve cascatas bioquímicas complexas, permitindo coordenação de funções como crescimento celular, resposta imune e atividade metabólica."
+            },
+            {
+                pergunta: "A fagocitose se distingue da pinocitose principalmente por:",
+                opcoes: [
+                    "Não depender de proteínas",
+                    "Ocorre apenas em células vegetais",
+                    "Englobar partículas grandes por reorganização ativa da membrana",
+                    "Não envolver vesículas",
+                    "Ser um processo passivo"
+                ],
+                correta: 2,
+                explicacao: "A fagocitose envolve a internalização de partículas grandes por meio de intensa reorganização do citoesqueleto (actina).<br><br>👉 A membrana se projeta e envolve o material, formando o fagossomo. É um mecanismo essencial de defesa realizado por macrófagos e neutrófilos."
+            },
+            {
+                pergunta: "A perda do gradiente de sódio impacta diretamente o transporte ativo secundário porque:",
+                opcoes: [
+                    "Estimula transporte passivo",
+                    "Impede a difusão simples",
+                    "Reduz fluidez da membrana",
+                    "Elimina a fonte de energia indireta utilizada nesse tipo de transporte",
+                    "Aumenta a osmose"
+                ],
+                correta: 3,
+                explicacao: "O gradiente de sódio é a principal fonte de energia indireta para transporte ativo secundário.<br><br>👉 Sem esse gradiente, cotransportes e contratransportes deixam de funcionar e a absorção de nutrientes (como glicose) é prejudicada."
+            },
+            {
+                pergunta: "A integridade funcional da membrana plasmática é crítica porque:",
+                opcoes: [
+                    "Permite apenas transporte de água",
+                    "Impede qualquer troca de substâncias",
+                    "Elimina necessidade de proteínas",
+                    "Garante produção de ATP",
+                    "Mantém o equilíbrio interno ao controlar seletivamente trocas com o meio"
+                ],
+                correta: 4,
+                explicacao: "A membrana plasmática é responsável por manter a homeostase celular, controlando rigorosamente o que entra e sai.<br><br>👉 Isso permite a manutenção de gradientes iônicos, equilíbrio osmótico e comunicação celular. Qualquer falha nessa seletividade leva ao colapso funcional da célula."
+            },
+            // QUESTÕES DE 31 A 45
+            {
+                pergunta: "Qual é a principal função da polaridade do complexo de Golgi?",
+                opcoes: [
+                    "Produzir ATP para a célula",
+                    "Realizar síntese de proteínas",
+                    "Permitir processamento e direcionamento sequencial de moléculas",
+                    "Armazenar material genético",
+                    "Produzir lipídios de membrana"
+                ],
+                correta: 2,
+                explicacao: "A polaridade do complexo de Golgi (faces cis e trans) permite um processamento sequencial altamente organizado das moléculas.<br>👉 Cada compartimento possui enzimas específicas que modificam proteínas e lipídios de forma progressiva (ex: glicosilação).<br>👉 Além disso, o Golgi realiza triagem molecular, direcionando produtos para destinos distintos (membrana, secreção ou lisossomos).<br>👉 Consequência: garante que cada molécula chegue ao local correto com a modificação adequada — falhas nesse sistema levam a erros de endereçamento celular, com impacto funcional significativo."
+            },
+            {
+                pergunta: "O que ocorre na ausência de lisossomos funcionais?",
+                opcoes: [
+                    "Aumento da síntese proteica",
+                    "Redução da divisão celular",
+                    "Produção excessiva de ATP",
+                    "Acúmulo de substâncias não degradadas",
+                    "Aumento da permeabilidade da membrana"
+                ],
+                correta: 3,
+                explicacao: "Os lisossomos são responsáveis pela digestão intracelular e reciclagem de componentes celulares.<br>👉 Sem sua formação, ocorre acúmulo progressivo de macromoléculas não degradadas dentro da célula.<br>👉 Esse acúmulo interfere fisicamente e metabolicamente no funcionamento celular.<br>👉 Aplicação clínica: nas doenças de depósito lisossomal, a ausência de enzimas leva à sobrecarga celular, especialmente em neurônios, causando degeneração progressiva."
+            },
+            {
+                pergunta: "Qual a diferença fundamental entre lisossomo primário e secundário?",
+                opcoes: [
+                    "O secundário não possui enzimas",
+                    "O secundário está em processo de digestão",
+                    "O primário realiza digestão ativa",
+                    "O primário está ligado ao núcleo",
+                    "Não há diferença funcional"
+                ],
+                correta: 1,
+                explicacao: "A diferença entre lisossomo primário e secundário é funcional, não estrutural.<br>👉 Lisossomo primário: contém enzimas ainda não envolvidas na digestão.<br>👉 Lisossomo secundário: já está fundido com vesículas contendo material a ser degradado.<br>👉 Isso demonstra que organelas podem mudar de função dinamicamente, dependendo do contexto celular — conceito importante em provas."
+            },
+            {
+                pergunta: "A autofagia tem como principal função:",
+                opcoes: [
+                    "Produzir energia diretamente",
+                    "Sintetizar proteínas estruturais",
+                    "Transportar substâncias extracelulares",
+                    "Armazenar lipídios",
+                    "Reciclar componentes celulares"
+                ],
+                correta: 4,
+                explicacao: "A autofagia é um mecanismo essencial de controle de qualidade celular.<br>👉 Ela remove organelas danificadas ou envelhecidas, evitando acúmulo de structures disfuncionais.<br>👉 Os componentes degradados podem ser reutilizados, contribuindo para economia energética.<br>👉 Aplicação: disfunções nesse processo estão associadas a envelhecimento, câncer e doenças neurodegenerativas."
+            },
+            {
+                pergunta: "Qual é a função da ubiquitinação?",
+                opcoes: [
+                    "Produzir energia",
+                    "Sintetizar proteínas",
+                    "Transportar lipídios",
+                    "Marcar proteínas para degradação",
+                    "Armazenar glicose"
+                ],
+                correta: 3,
+                explicacao: "A ubiquitinação funciona como um 'sinal molecular de descarte'.<br>👉 A proteína ubiquitina se liga a proteínas defeituosas ou desnecessárias.<br>👉 O proteassoma reconhece essa marca e realiza sua degradação.<br>👉 Consequência: mantém a qualidade proteica da célula.<br>👉 Falhas → acúmulo de proteínas mal dobradas (ex: Alzheimer, Parkinson)."
+            },
+            {
+                pergunta: "Qual é a principal função dos peroxissomos?",
+                opcoes: [
+                    "Produção de ATP",
+                    "Síntese de proteínas",
+                    "Armazenamento de cálcio",
+                    "Transporte intracelular",
+                    "Detoxificação celular"
+                ],
+                correta: 4,
+                explicacao: "Peroxissomos realizam reações oxidativas, incluindo a produção e degradação de peróxido de hidrogênio (H₂O₂).<br>👉 A enzima catalase converte H₂O₂ em água e oxigênio, evitando dano celular.<br>👉 Também participam da degradação de ácidos graxos muito longos.<br>👉 Consequência: papel fundamental na detoxificação celular — especialmente no fígado."
+            },
+            {
+                pergunta: "Qual característica das mitocôndrias sustenta a teoria endossimbiótica?",
+                opcoes: [
+                    "Presença de ribossomos",
+                    "Capacidade de armazenar lipídios",
+                    "Produção de proteínas",
+                    "Presença de DNA próprio",
+                    "Capacidade de transporte"
+                ],
+                correta: 0,
+                explicacao: "As mitocôndrias possuem DNA próprio e maquinaria parcialmente independente, o que sustenta a teoria endossimbiótica.<br>👉 Isso permite sua autorreplicação dentro da célula.<br>👉 Além disso, explica a herança exclusivamente materna dessas organelas.<br>👉 Consequência: mutações mitocondriais afetam tecidos de alta demanda energética."
+            },
+            {
+                pergunta: "Por que algumas células possuem mais mitocôndrias?",
+                opcoes: [
+                    "Para armazenar nutrientes",
+                    "Para sintetizar DNA",
+                    "Devido à maior demanda energética",
+                    "Para controlar o núcleo",
+                    "Para aumentar o tamanho celular"
+                ],
+                correta: 2,
+                explicacao: "Tecidos com alta demanda energética possuem maior número de mitocôndrias para sustentar produção de ATP.<br>👉 Cérebro, músculo e coração dependem intensamente de energia contínua.<br>👉 A produção ocorre via respiração celular (ciclo de Krebs + cadeia respiratória).<br>👉 Consequência: qualquer falha mitocondrial afeta diretamente esses tecidos."
+            },
+            {
+                pergunta: "Qual função está associada ao retículo endoplasmático liso?",
+                opcoes: [
+                    "Síntese de proteínas",
+                    "Detoxificação",
+                    "Produção de ribossomos",
+                    "Digestão celular",
+                    "Armazenamento de DNA"
+                ],
+                correta: 1,
+                explicacao: "O retículo endoplasmático liso atua na biotransformação de substâncias lipossolúveis em compostos mais hidrossolúveis, facilitando sua eliminação.<br>👉 Esse processo envolve enzimas como citocromo P450.<br>👉 Muito ativo em hepatócitos.<br>👉 Aplicação: explica fenômenos como tolerância a drogas e metabolização de toxinas."
+            },
+            {
+                pergunta: "Qual é a função do REL em células musculares?",
+                opcoes: [
+                    "Produzir ATP",
+                    "Armazenar cálcio",
+                    "Sintetizar proteínas",
+                    "Transportar lipídios",
+                    "Degradar substâncias"
+                ],
+                correta: 1,
+                explicacao: "O REL atua como reservatório de Ca²⁺, essencial para a contração muscular.<br>👉 A liberação de cálcio no citosol permite interação entre actina e miosina.<br>👉 Após contração, o cálcio é recaptado pelo retículo.<br>👉 Consequência: qualquer falha nesse sistema compromete a função muscular."
+            },
+            {
+                pergunta: "Qual é o papel do complexo de Golgi na formação dos lisossomos?",
+                opcoes: [
+                    "Produzir ATP",
+                    "Sintetizar DNA",
+                    "Armazenar proteínas",
+                    "Modificar e direcionar enzimas lisossomais",
+                    "Controlar o núcleo"
+                ],
+                correta: 3,
+                explicacao: "O complexo de Golgi é responsável por modificar, empacotar e direcionar enzimas lisossomais.<br>👉 Essas enzimas são marcadas (ex: manose-6-fosfato) e enviadas para formar lisossomos.<br>👉 Esse processo garante que enzimas digestivas não atuem no local errado.<br>👉 Consequência: falhas → doenças metabólicas graves."
+            },
+            {
+                pergunta: "Qual é a função do acrossomo?",
+                opcoes: [
+                    "Produzir energia",
+                    "Armazenar DNA",
+                    "Permitir a penetração no óvulo",
+                    "Sintetizar proteínas",
+                    "Controlar divisão celular"
+                ],
+                correta: 2,
+                explicacao: "O acrossomo contém enzimas digestivas que permitem ao espermatozoide penetrar as camadas que envolvem o óvulo.<br>👉 Ele deriva do complexo de Golgi durante a espermatogênese.<br>👉 Atua por liberação controlada de enzimas.<br>👉 Consequência: essencial para fecundação — falhas levam à infertilidade."
+            },
+            {
+                pergunta: "O que caracteriza a heterofagia?",
+                opcoes: [
+                    "Digestão de organelas próprias",
+                    "Produção de energia",
+                    "Síntese de proteínas",
+                    "Digestão de material externo",
+                    "Armazenamento de lipídios"
+                ],
+                correta: 3,
+                explicacao: "A heterofagia envolve a digestão de materiais externos internalizados por endocitose.<br>👉 Exemplo: fagocitose de bactérias por células de defesa.<br>👉 O material é degradado após fusão com lisossomos.<br>👉 Consequência: mecanismo fundamental para imunidade e defesa do organismo."
+            },
+            {
+                pergunta: "Qual é a principal função dos vacúolos vegetais?",
+                opcoes: [
+                    "Produzir energia",
+                    "Sintetizar proteínas",
+                    "Controlar o núcleo",
+                    "Digestão celular",
+                    "Armazenamento e regulação osmótica"
+                ],
+                correta: 4,
+                explicacao: "Os vacúolos vegetais atuam no armazenamento de substâncias e regulação osmótica.<br>👉 Controlam entrada e saída de água.<br>👉 Mantêm a pressão de turgor, essencial para sustentação da planta.<br>👉 Consequência: perda de função → murchamento celular."
+            },
+            {
+                pergunta: "Qual é a função da parede celular vegetal?",
+                opcoes: [
+                    "Produzir ATP",
+                    "Sintetizar proteínas",
+                    "Controlar o metabolismo",
+                    "Armazenar nutrientes",
+                    "Suporte e proteção"
+                ],
+                correta: 4,
+                explicacao: "A parede celular vegetal é composta principalmente por celulose e fornece suporte mecânico e proteção.<br>👉 Impede expansão excessiva em meio hipotônico (evita lise).<br>👉 Define forma e resistência da célula.<br>👉 Consequência: essencial para estrutura dos tecidos vegetais."
+            },
+            // QUESTÕES DE 46 A 60
+            {
+                pergunta: "Qual estrutura é diretamente responsável pela modificação inicial de proteínas destinadas à secreção?",
+                opcoes: [
+                    "Peroxissomo",
+                    "Complexo de Golgi",
+                    "Lisossomo",
+                    "Membrana plasmática",
+                    "Retículo endoplasmático rugoso"
+                ],
+                correta: 4,
+                explicacao: "O retículo endoplasmático rugoso (RER) é o primeiro local da via secretora. Nele ocorre a síntese das proteínas por ribossomos aderidos e o início do processamento, como dobramento correto e glicosilação inicial. Esse passo é essencial para garantir que a proteína já saia do RER em condições adequadas para seguir ao complexo de Golgi."
+            },
+            {
+                pergunta: "O que determina o destino final de uma proteína dentro da célula?",
+                opcoes: [
+                    "Tamanho da proteína",
+                    "Sequências sinal específicas",
+                    "Quantidade de ribossomos",
+                    "Local de síntese no citosol",
+                    "Carga elétrica"
+                ],
+                correta: 1,
+                explicacao: "As sequências sinal funcionam como 'etiquetas de endereçamento' que são reconhecidas por sistemas de transporte intracelular. Elas determinam se a proteína vai para organelas específicas, membrana plasmática, secreção ou degradação. Sem essas sequências, a proteína perde sua rota correta dentro da célula."
+            },
+            {
+                pergunta: "Qual processo depende diretamente da fusão de membranas?",
+                opcoes: [
+                    "Transporte ativo",
+                    "Difusão simples",
+                    "Exocitose",
+                    "Osmose",
+                    "Difusão facilitada"
+                ],
+                correta: 2,
+                explicacao: "A exocitose ocorre quando vesículas intracelulares se fundem com a membrana plasmática para liberar seu conteúdo no meio extracelular. Esse processo depende de proteínas especializadas (como SNAREs) e é essencial para secreção de hormônios, neurotransmissores e enzimas."
+            },
+            {
+                pergunta: "Qual organela está mais diretamente envolvida na degradação de ácidos graxos muito longos?",
+                opcoes: [
+                    "Lisossomo",
+                    "Complexo de Golgi",
+                    "Peroxissomo",
+                    "Mitocôndria",
+                    "Retículo endoplasmático rugoso"
+                ],
+                correta: 2,
+                explicacao: "Os peroxissomos realizam a oxidação de ácidos graxos muito longos, que não podem ser diretamente metabolizados pela mitocôndria. Esse processo gera peróxido de hidrogênio (H₂O₂), que é rapidamente neutralizado pela enzima catalase, evitando danos celulares."
+            },
+            {
+                pergunta: "A principal função dos ribossomos livres no citosol é:",
+                opcoes: [
+                    "Produzir proteínas de secreção",
+                    "Produzir proteínas de membrana",
+                    "Degradar proteínas",
+                    "Produzir proteínas citosólicas",
+                    "Produzir lipídios"
+                ],
+                correta: 3,
+                explicacao: "Ribossomos livres sintetizam proteínas que permanecem no citosol ou são direcionadas para organelas não pertencentes ao sistema endomembranar, como núcleo e mitocôndrias. Já proteínas de secreção ou membrana são produzidas no RER."
+            },
+            {
+                pergunta: "Qual evento caracteriza o início da via secretora?",
+                opcoes: [
+                    "Entrada no complexo de Golgi",
+                    "Síntese no RER",
+                    "Formação de lisossomos",
+                    "Fusão com membrana plasmática",
+                    "Degradação proteica"
+                ],
+                correta: 1,
+                explicacao: "A via secretora começa com a síntese de proteínas no retículo endoplasmático rugoso. A partir daí, essas proteínas são enviadas em vesículas ao complexo de Golgi para maturação e posterior destino celular."
+            },
+            {
+                pergunta: "Qual característica diferencia o transporte vesicular do transporte por proteínas de membrana?",
+                opcoes: [
+                    "Especificidade molecular",
+                    "Presença de proteínas",
+                    "Uso de energia",
+                    "Dependência de gradiente",
+                    "Transporte de grandes volumes"
+                ],
+                correta: 4,
+                explicacao: "O transporte vesicular se destaca por mover grandes quantidades de material de uma só vez, incluindo proteínas, lipídios e partículas maiores. Já os transportes por canais ou carreadores lidam com moléculas individuais ou pequenos íons."
+            },
+            {
+                pergunta: "A falha na marcação por manose-6-fosfato resultaria em:",
+                opcoes: [
+                    "Proteínas acumuladas no núcleo",
+                    "Redução da atividade mitocondrial",
+                    "Aumento da síntese proteica",
+                    "Bloqueio da osmose",
+                    "Enzimas lisossomais secretadas para fora da célula"
+                ],
+                correta: 4,
+                explicacao: "A manose-6-fosfato é um sinal essencial que direciona enzimas para os lisossomos. Sem essa marcação, essas enzimas não são reconhecidas e acabam sendo secretadas para fora da célula, prejudicando a digestão intracelular (como ocorre na doença I-cell)."
+            },
+            {
+                pergunta: "Qual processo está diretamente associado à manutenção da qualidade proteica?",
+                opcoes: [
+                    "Ubiquitinação",
+                    "Difusão simples",
+                    "Exocitose",
+                    "Osmose",
+                    "Pinocitose"
+                ],
+                correta: 0,
+                explicacao: "A ubiquitinação marca proteínas defeituosas ou mal dobradas para degradação pelo proteassoma. Esse sistema é fundamental para manter a qualidade proteica e evitar acúmulo de proteínas tóxicas dentro da célula."
+            },
+            {
+                pergunta: "Qual estrutura é essencial para o transporte intracelular de vesículas?",
+                opcoes: [
+                    "Lisossomo",
+                    "Núcleo",
+                    "Citoesqueleto",
+                    "Ribossomo",
+                    "Peroxissomo"
+                ],
+                correta: 2,
+                explicacao: "O citoesqueleto atua como uma rede de 'trilhos' intracelulares que permite o deslocamento de vesículas. Proteínas motoras como cinesina e dineína utilizam ATP para transportar essas vesículas ao longo dos microtúbulos."
+            },
+            {
+                pergunta: "Qual evento depende diretamente de reorganização do citoesqueleto?",
+                opcoes: [
+                    "Difusão simples",
+                    "Osmose",
+                    "Fagocitose",
+                    "Transporte passivo",
+                    "Difusão facilitada"
+                ],
+                correta: 2,
+                explicacao: "A fagocitose exige mudanças estruturais na membrana plasmática, controladas pela reorganização da actina. Isso permite que a célula 'engula' partículas grandes, sendo um processo essencial em células de defesa."
+            },
+            {
+                pergunta: "A principal função da cadeia transportadora de elétrons é:",
+                opcoes: [
+                    "Produzir glicose",
+                    "Síntese de DNA",
+                    "Degradação de proteínas",
+                    "Transporte de íons diretamente",
+                    "Gerar gradiente de prótons"
+                ],
+                correta: 4,
+                explicacao: "A cadeia transportadora de elétrons utiliza a energia liberada pelos elétrons para bombear prótons para o espaço intermembranar da mitocôndria, criando um gradiente eletroquímico que será usado para produzir ATP."
+            },
+            {
+                pergunta: "Qual fator impacta diretamente a fluidez da membrana?",
+                opcoes: [
+                    "Volume celular",
+                    "Quantidade de DNA",
+                    "Composição lipídica",
+                    "Número de lisossomos",
+                    "Presença de ribossomos"
+                ],
+                correta: 2,
+                explicacao: "A fluidez da membrana depende principalmente da composição dos lipídios. Cadeias insaturadas aumentam a fluidez, enquanto o colesterol regula e estabiliza a membrana, evitando rigidez ou excesso de fluidez."
+            },
+            {
+                pergunta: "Qual processo permite entrada seletiva de partículas específicas via receptores?",
+                opcoes: [
+                    "Pinocitose",
+                    "Endocitose mediada por receptor",
+                    "Difusão simples",
+                    "Osmose",
+                    "Fagocitose"
+                ],
+                correta: 1,
+                explicacao: "A endocitose mediada por receptor é altamente seletiva, pois depende de proteínas receptoras específicas na membrana. Esse mecanismo permite a captação eficiente de moléculas como LDL, mesmo em baixas concentrações."
+            },
+            {
+                pergunta: "A principal consequência da perda da integridade da membrana plasmática é:",
+                opcoes: [
+                    "Aumento da síntese proteica",
+                    "Perda da homeostase celular",
+                    "Aumento da divisão celular",
+                    "Produção excessiva de ATP",
+                    "Acúmulo de DNA"
+                ],
+                correta: 1,
+                explicacao: "A membrana plasmática controla o equilíbrio entre o meio interno e externo da célula. Quando sua integridade é perdida, ocorre descontrole osmótico e iônico, levando à perda da homeostase e, consequentemente, morte celular."
+            }
+        ];
+
+        /* ========================
+           💻 LÓGICA E ESTADO
+           ======================== */
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const questionCounter = document.getElementById('question-counter');
+        
+        const feedbackModal = document.getElementById('feedback-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalFeedback = document.getElementById('modal-feedback');
+        const modalExplanation = document.getElementById('modal-explanation');
+
+        const letras = ["A)", "B)", "C)", "D)", "E)"];
+
+        function initQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            quizScreen.classList.add('active');
+            resultScreen.classList.remove('active');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            
+            questionText.textContent = currentQuestion.pergunta;
+            questionCounter.textContent = `Questão ${currentQuestionIndex + 1} de ${perguntas.length}`;
+            optionsContainer.innerHTML = '';
+
+            currentQuestion.opcoes.forEach((optionText, index) => {
+                const button = document.createElement('button');
+                button.className = 'option-btn';
+                button.textContent = `${letras[index]} ${optionText}`;
+                button.onclick = () => handleAnswer(button, index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(selectedButton, selectedIndex) {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            const correctIndex = currentQuestion.correta;
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+
+            allButtons.forEach(btn => btn.disabled = true);
+
+            const isCorrect = (selectedIndex === correctIndex);
+
+            if (isCorrect) {
+                selectedButton.classList.add('correct');
+                score++;
+            } else {
+                selectedButton.classList.add('wrong');
+                allButtons[correctIndex].classList.add('correct');
+            }
+
+            setTimeout(() => {
+                const respostaCorretaFormatada = `${letras[correctIndex]} ${currentQuestion.opcoes[correctIndex]}`;
+                showModal(isCorrect, respostaCorretaFormatada, currentQuestion.explicacao);
+            }, 1000);
+        }
+
+        function showModal(isCorrect, correctAnswerText, explicacao) {
+            if (isCorrect) {
+                modalTitle.textContent = "Acertou! ✅";
+                modalTitle.className = "modal-title text-success";
+                modalFeedback.innerHTML = `Mandou bem! A resposta é mesmo:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            } else {
+                modalTitle.textContent = "Errou ❌";
+                modalTitle.className = "modal-title text-danger";
+                modalFeedback.innerHTML = `Poxa, não foi dessa vez.<br>A resposta correta era:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            }
+
+            modalExplanation.innerHTML = `💡 <strong>Explicação:</strong> ${explicacao}`;
+
+            const nextBtn = document.getElementById('next-btn');
+            if (currentQuestionIndex === perguntas.length - 1) {
+                nextBtn.textContent = "Ver Resultados";
+            } else {
+                nextBtn.textContent = "Próxima Questão";
+            }
+
+            feedbackModal.classList.add('active');
+        }
+
+        function nextQuestion() {
+            feedbackModal.classList.remove('active');
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < perguntas.length) {
+                setTimeout(loadQuestion, 300); 
+            } else {
+                setTimeout(showFinalResults, 300);
+            }
+        }
+
+        function showFinalResults() {
+            quizScreen.classList.remove('active');
+            resultScreen.classList.add('active');
+
+            const scoreText = document.getElementById('score-text');
+            const scoreFeedback = document.getElementById('score-feedback');
+            
+            scoreText.textContent = `${score}/${perguntas.length}`;
+
+            const percentage = score / perguntas.length;
+            if (percentage >= 0.9) {
+                scoreFeedback.textContent = "Incrível! Você dominou o assunto de verdade!";
+            } else if (percentage >= 0.6) {
+                scoreFeedback.textContent = "Muito bom! Seus conhecimentos estão bem afiados.";
+            } else {
+                scoreFeedback.textContent = "Continue praticando! Biologia celular exige dedicação constante.";
+            }
+        }
+
+        function restartQuiz() {
+            initQuiz();
+        }
+
+        initQuiz();
+    </script>
+</body>
+</html>
